@@ -7,182 +7,128 @@
   <title>Baseline Banana Spectra</title>
 
   <script src="https://cdn.plot.ly/plotly-3.1.0.min.js"></script>
-
-  <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: #fffdf4;
-      color: #222;
-    }
-
-    header {
-      background: #ffd84d;
-      padding: 22px 40px;
-    }
-
-    header h1 {
-      margin: 0;
-      font-size: 28px;
-    }
-
-    header p {
-      margin: 6px 0 0;
-    }
-
-    main {
-      max-width: 1100px;
-      margin: 40px auto;
-      padding: 0 25px;
-    }
-
-    .upload-box {
-      border: 2px dashed #d5b529;
-      border-radius: 12px;
-      padding: 30px;
-      text-align: center;
-      background: white;
-    }
-
-    input {
-      margin-top: 15px;
-    }
-
-    #plot {
-      width: 100%;
-      height: 520px;
-      margin-top: 30px;
-      background: white;
-    }
-
-    .status {
-      margin-top: 15px;
-      color: #666;
-    }
-  </style>
+  <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
 
 <header>
-  <h1>🍌 Baseline Banana Spectra</h1>
-  <p>Spectroscopy data processing & visualization</p>
+  <div>
+    <h1>🍌 Baseline Banana Spectra</h1>
+    <p>Spectroscopy data processing & visualization</p>
+  </div>
+  <div class="version">v0.1</div>
 </header>
 
-<main>
+<div class="workspace">
 
-  <div class="upload-box">
+  <aside class="sidebar">
 
-    <h2>Upload Spectrum</h2>
+    <section>
+      <h3>DATA</h3>
 
-    <p>
-      Upload a two-column CSV or TXT file.
-    </p>
+      <label class="upload-button">
+        Upload Spectrum
+        <input
+          type="file"
+          id="fileInput"
+          accept=".csv,.txt,.dat"
+          hidden
+        >
+      </label>
 
-    <input
-      type="file"
-      id="fileInput"
-      accept=".csv,.txt,.dat"
-    >
+      <div id="fileName" class="filename">
+        No file loaded
+      </div>
 
-    <div class="status" id="status">
-      No file loaded.
+      <div id="pointCount" class="small-text"></div>
+    </section>
+
+    <section>
+      <h3>DISPLAY</h3>
+
+      <label class="checkbox-row">
+        <input type="checkbox" id="reverseX">
+        Reverse X axis
+      </label>
+    </section>
+
+    <section>
+      <h3>BASELINE CORRECTION</h3>
+
+      <label for="baselineMethod">Method</label>
+
+      <select id="baselineMethod">
+        <option value="none">None</option>
+        <option value="polynomial">Polynomial</option>
+      </select>
+
+      <label for="polyDegree">
+        Polynomial degree
+      </label>
+
+      <select id="polyDegree">
+        <option value="1">1 — Linear</option>
+        <option value="2" selected>2 — Quadratic</option>
+        <option value="3">3 — Cubic</option>
+        <option value="4">4 — Quartic</option>
+        <option value="5">5 — Quintic</option>
+      </select>
+    </section>
+
+    <section>
+      <h3>NORMALIZATION</h3>
+
+      <select id="normalizeMethod">
+        <option value="none">None</option>
+        <option value="max">Maximum</option>
+        <option value="minmax">Min–Max</option>
+        <option value="area">Area</option>
+      </select>
+    </section>
+
+    <section class="buttons">
+      <button id="applyButton" class="primary">
+        Apply Processing
+      </button>
+
+      <button id="resetButton">
+        Reset
+      </button>
+    </section>
+
+    <section>
+      <h3>EXPORT</h3>
+
+      <button id="exportButton">
+        Export Processed CSV
+      </button>
+    </section>
+
+    <section class="privacy">
+      🔒 Data processing happens locally in your browser.
+    </section>
+
+  </aside>
+
+  <main class="main-panel">
+
+    <div class="plot-header">
+      <div>
+        <h2>Spectrum</h2>
+        <p id="status">
+          Upload a spectrum to begin.
+        </p>
+      </div>
     </div>
 
-  </div>
+    <div id="plot"></div>
 
-  <div id="plot"></div>
+  </main>
 
-</main>
+</div>
 
-<script>
-
-const fileInput = document.getElementById("fileInput");
-const status = document.getElementById("status");
-
-fileInput.addEventListener("change", function(event) {
-
-  const file = event.target.files[0];
-
-  if (!file) return;
-
-  const reader = new FileReader();
-
-  reader.onload = function(e) {
-
-    const text = e.target.result;
-
-    const lines = text
-      .split(/\r?\n/)
-      .filter(line => line.trim() !== "");
-
-    const x = [];
-    const y = [];
-
-    for (const line of lines) {
-
-      const parts = line
-        .trim()
-        .split(/[\s,;\t]+/);
-
-      if (parts.length < 2) continue;
-
-      const xv = parseFloat(parts[0]);
-      const yv = parseFloat(parts[1]);
-
-      if (!isNaN(xv) && !isNaN(yv)) {
-        x.push(xv);
-        y.push(yv);
-      }
-    }
-
-    if (x.length === 0) {
-
-      status.textContent =
-        "Could not detect numeric two-column data.";
-
-      return;
-    }
-
-    status.textContent =
-      `${file.name} — ${x.length} data points loaded`;
-
-    Plotly.newPlot(
-      "plot",
-      [{
-        x: x,
-        y: y,
-        type: "scatter",
-        mode: "lines",
-        name: "Spectrum"
-      }],
-      {
-        title: "Spectrum",
-        xaxis: {
-          title: "Wavenumber / Raman Shift"
-        },
-        yaxis: {
-          title: "Intensity"
-        },
-        margin: {
-          t: 60,
-          r: 30,
-          b: 70,
-          l: 80
-        }
-      },
-      {
-        responsive: true
-      }
-    );
-
-  };
-
-  reader.readAsText(file);
-
-});
-
-</script>
+<script src="app.js"></script>
 
 </body>
 </html>
